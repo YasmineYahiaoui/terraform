@@ -32,7 +32,7 @@ resource "azurerm_network_security_group" "nsg" {
   name                = "nsg-demo"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-
+// pour linux  regle ssh
   security_rule { //Définit une règle de sécurité réseau à appliquer au NSG.
     name                       = "AllowSSH"
     priority                   = 1001  //Ordre d’évaluation de la règle (plus petit = plus prioritaire)
@@ -44,20 +44,37 @@ resource "azurerm_network_security_group" "nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+  //pour windows regle RDP 
+  // Règle RDP pour Windows
+  security_rule {
+    name                       = "AllowRDP"
+    priority                   = 1002
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3389" // port RDP
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
+
 # 5 Network Interface pour VM --Chaque VM a besoin d’une interface réseau pour communiquer dans le VNet.Network Interface Card).
 # -----------------------------
+//nic linux 
 resource "azurerm_network_interface" "nic_linux" { //On crée une interface réseau (NIC) pour une VM.
   name                = "nic-linux"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-
+  
   ip_configuration {
     name                          = "ipconfig1"  //nom de la configuration IP (obligatoire).
     subnet_id                     = azurerm_subnet.subnet.id //on rattache la NIC au sous-réseau qu’on a créé avant (subnet-demo).
     private_ip_address_allocation = "Dynamic" //l’adresse IP privée sera attribuée automatiquement par Azure (DHCP).
   }
 }
+
+
 //Sans elle, la VM ne peut pas se connecter au réseau (comme un PC sans carte réseau).
 #6 VM Linux --machine virtuelle Ubuntu déployée dans Azure.
 # -----------------------------
