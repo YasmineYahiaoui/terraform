@@ -3,13 +3,138 @@ provider "azurerm" {
   features {} //obligatoire meme vide Il sert à activer certaines fonctionnalités avancées du provider si nécessaire. 
   subscription_id = "da54e07e-d4bb-4a6c-8e45-15fa2375a9c8"  # si tu veux forcer un abonnement précis. Sinon Terraform prend l’abonnement par défaut de az login. dans mon caas j ai connecter mon azure 
 }
-
-  //
-
-  // create a ressource group 
-  
-resource "azurerm_resource_group" "rg" { //Crée un groupe de ressources dans Azure. nom RG
+  // create a ressource group  
+resource "azurerm_resource_group" "rg" { //Crée un groupe de ressources dans Azure. nom local RG
   name = "rg1" //  NOM DU GROUP 
   location ="westeurope" // region ou seront cree les resources 
-
 }
+# -----------------------------
+# 2 Virtual Network (VNet) Réseau virtuel privé dans Azure
+# -----------------------------
+resource "azurerm_virtual_network" "vnet" {
+  name                = "vnet-demo"
+  location            = azurerm_resource_group.rg.location  //On utilise la même région que le Resource Group.
+  resource_group_name = azurerm_resource_group.rg.name //Associe le VNet au Resource Group existant (rg1).
+  address_space       = ["10.0.0.0/16"] //Définit la plage d’adresses IP privées que le reseaux pourra utiliser , /16 ici permet d’avoir 65 536 adresses IP dans ce réseau
+}
+# -----------------------------
+# 3 Subnet Sous-réseau
+# -----------------------------
+resource "azurerm_subnet" "subnet" {
+  name                 = "subnet-demo"
+  resource_group_name  = azurerm_resource_group.rg.name //Le subnet appartient au Resource Group créé précédemment (rg1).
+  virtual_network_name = azurerm_virtual_network.vnet.name //Le subnet est attaché au VNet existant (vnet-demo).Chaque subnet doit appartenir à un seul VNet.
+  address_prefixes     = ["10.0.1.0/24"]
+}
+#4 Network Security Group (NSG) utiliser pour Sécuriser ton réseau  selon les regles ...
+# -----------------------------
+resource "azurerm_network_security_group" "nsg" {
+  name                = "nsg-demo"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  security_rule { //Définit une règle de sécurité réseau à appliquer au NSG.
+    name                       = "AllowSSH"
+    priority                   = 1001  //Ordre d’évaluation de la règle (plus petit = plus prioritaire)
+    direction                  = "Inbound" //S’applique aux flux entrants
+    access                     = "Allow"
+    protocol                   = "Tcp" //Protocole autorisé (ici TCP pour SSH)
+    source_port_range          = "*"
+    destination_port_range     = "22"   //ici, seule la connexion SSH (port 22) est autorisée.
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+# 5 Network Interface pour VM --Chaque VM a besoin d’une interface réseau pour communiquer dans le VNet.
+# -----------------------------
+resource "azurerm_network_interface" "nic_linux" { //On crée une interface réseau (NIC) pour une VM.
+  name                = "nic-linux"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "ipconfig1"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+#6 VM Linux --machine virtuelle Ubuntu déployée dans Azure.
+# -----------------------------
+resource "azurerm_linux_virtual_machine" "vm_linux" {
+  name                = "vm-linux-demo"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_B1s"
+  admin_username      = "azureuser"
+  admin_password      = "Password1234!" 
+ 
+disable_password_authentication = false
+  network_interface_ids = [azurerm_network_interface.nic_linux.id] //connecte la VM à la NIC déjà créée (nic-linux).
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+}
+# 7 VM Windows
+# -----------------------------
+resource "azurerm_network_interface" "nic_windows" {
+  name                = "nic-windows"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "ipconfig1"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_windows_virtual_machine" "vm_windows" {
+  name                = "vm-windows-demo"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_B1s"
+  admin_username      = "azureuser"
+  admin_password      = "Password1234!"
+  network_interface_ids = [azurerm_network_interface.nic_windows.id]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+}
+# 8 Storage Account
+# -----------------------------
+resource "azurerm_storage_account" "storage_demo" {
+  name                     = "storagedemo12345yasmine" # Doit être unique
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+//IaC = traiter ton infrastructure comme du code. On écrit “la recette” et le cloud exécute cette recette pour créer les ressources exactement comme tu l’as défini.//
+//Avec IaC : tu écris un fichier Terraform avec tout ça, tu l’exécutes, et Azure crée toutes les ressources automatiquement.
+//IaC = écrire la définition de ton infrastructure dans un fichier (code), au lieu de créer les ressources manuellement dans le portail Azure.
+//💡 Analogie :
+
+//Terraform écrit la “recette” pour Azure.
+
+//Azure suit la recette et crée tout pour toi dans le cloud.
+
+//Tu n’as jamais besoin d’installer Ubuntu/Windows sur ton PC pour faire ces VM.
