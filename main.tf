@@ -32,6 +32,7 @@ resource "azurerm_network_security_group" "nsg" {
   name                = "nsg-demo"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+  
 // pour linux  regle ssh
   security_rule { //Définit une règle de sécurité réseau à appliquer au NSG.
     name                       = "AllowSSH"
@@ -67,11 +68,17 @@ resource "azurerm_network_interface" "nic_linux" { //On crée une interface rés
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   
+
   ip_configuration {
     name                          = "ipconfig1"  //nom de la configuration IP (obligatoire).
     subnet_id                     = azurerm_subnet.subnet.id //on rattache la NIC au sous-réseau qu’on a créé avant (subnet-demo).
     private_ip_address_allocation = "Dynamic" //l’adresse IP privée sera attribuée automatiquement par Azure (DHCP).
   }
+}
+// Associer NSG à la NIC Linux
+resource "azurerm_network_interface_security_group_association" "linux_nic_nsg" {
+  network_interface_id          = azurerm_network_interface.nic_linux.id
+  network_security_group_id     = azurerm_network_security_group.nsg.id
 }
 
 
@@ -110,6 +117,7 @@ resource "azurerm_network_interface" "nic_windows" {
   name                = "nic-windows"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+   
 
   ip_configuration {
     name                          = "ipconfig1"
@@ -117,7 +125,11 @@ resource "azurerm_network_interface" "nic_windows" {
     private_ip_address_allocation = "Dynamic"
   }
 }
-
+// Associer NSG à la NIC Windows
+resource "azurerm_network_interface_security_group_association" "windows_nic_nsg" {
+  network_interface_id          = azurerm_network_interface.nic_windows.id
+  network_security_group_id     = azurerm_network_security_group.nsg.id
+}
 resource "azurerm_windows_virtual_machine" "vm_windows" {
   name                = "vm-windows-demo"
   resource_group_name = azurerm_resource_group.rg.name
