@@ -3,7 +3,7 @@ provider "azurerm" {
   features {} //obligatoire meme vide Il sert à activer certaines fonctionnalités avancées du provider si nécessaire. 
   subscription_id = "da54e07e-d4bb-4a6c-8e45-15fa2375a9c8"  # si tu veux forcer un abonnement précis. Sinon Terraform prend l’abonnement par défaut de az login. dans mon caas j ai connecter mon azure 
 }
-  // create a ressource group  
+  // create a ressource group   une boîte d’organisation.
 resource "azurerm_resource_group" "rg" { //Crée un groupe de ressources dans Azure. nom local RG
   name = "rg1" //  NOM DU GROUP 
   location ="westeurope" // region ou seront cree les resources 
@@ -45,7 +45,7 @@ resource "azurerm_network_security_group" "nsg" {
     destination_address_prefix = "*"
   }
 }
-# 5 Network Interface pour VM --Chaque VM a besoin d’une interface réseau pour communiquer dans le VNet.
+# 5 Network Interface pour VM --Chaque VM a besoin d’une interface réseau pour communiquer dans le VNet.Network Interface Card).
 # -----------------------------
 resource "azurerm_network_interface" "nic_linux" { //On crée une interface réseau (NIC) pour une VM.
   name                = "nic-linux"
@@ -53,36 +53,40 @@ resource "azurerm_network_interface" "nic_linux" { //On crée une interface rés
   resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
-    name                          = "ipconfig1"
-    subnet_id                     = azurerm_subnet.subnet.id
-    private_ip_address_allocation = "Dynamic"
+    name                          = "ipconfig1"  //nom de la configuration IP (obligatoire).
+    subnet_id                     = azurerm_subnet.subnet.id //on rattache la NIC au sous-réseau qu’on a créé avant (subnet-demo).
+    private_ip_address_allocation = "Dynamic" //l’adresse IP privée sera attribuée automatiquement par Azure (DHCP).
   }
 }
+//Sans elle, la VM ne peut pas se connecter au réseau (comme un PC sans carte réseau).
 #6 VM Linux --machine virtuelle Ubuntu déployée dans Azure.
 # -----------------------------
 resource "azurerm_linux_virtual_machine" "vm_linux" {
   name                = "vm-linux-demo"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  size                = "Standard_B1s"
-  admin_username      = "azureuser"
+  size                = "Standard_B1s" //Taille de la VM = type de machine (CPU/RAM).
+  admin_username      = "azureuser" //Identifiants d’accès à la VM.
   admin_password      = "Password1234!" 
- 
-disable_password_authentication = false
+  disable_password_authentication = false //connexion avec mot de passe pas cle ssh
+  
   network_interface_ids = [azurerm_network_interface.nic_linux.id] //connecte la VM à la NIC déjà créée (nic-linux).
 
-  os_disk {
-    caching              = "ReadWrite"
+  os_disk {//Définition du disque système de la VM
+    caching              = "ReadWrite"//optimisations lecture/écriture.
     storage_account_type = "Standard_LRS"
   }
 
   source_image_reference {
-    publisher = "Canonical"
+    publisher = "Canonical"//éditeur officiel d’Ubuntu.
     offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
+    sku       = "18.04-LTS"//version
+    version   = "latest"//prend la dernière mise à jour
   }
-}
+}//note: on doit toujours inclure au minimum :
+
+//RG + VNet/Subnet + NIC + VM.
+//Ces 4 ressources sont indispensables (plus la clé SSH ou mot de passe pour l’accès).
 # 7 VM Windows
 # -----------------------------
 resource "azurerm_network_interface" "nic_windows" {
@@ -118,7 +122,7 @@ resource "azurerm_windows_virtual_machine" "vm_windows" {
     version   = "latest"
   }
 }
-# 8 Storage Account
+# 8 Storage Account sert a stocker des blobs(image video fichier ) des tables des queues message entre application 
 # -----------------------------
 resource "azurerm_storage_account" "storage_demo" {
   name                     = "storagedemo12345yasmine" # Doit être unique
