@@ -58,6 +58,19 @@ resource "azurerm_network_interface" "nic_linux" { //On crée une interface rés
     private_ip_address_allocation = "Dynamic" //l’adresse IP privée sera attribuée automatiquement par Azure (DHCP).
   }
 }
+//ajout un autre NIC pour la vm windows 
+resource "azurerm_network_interface" "nic_windows" {
+  name                = "nic-windows"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "ipconfig1"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
 //Sans elle, la VM ne peut pas se connecter au réseau (comme un PC sans carte réseau).
 #6 VM Linux --machine virtuelle Ubuntu déployée dans Azure.
 # -----------------------------
