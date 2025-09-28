@@ -191,6 +191,7 @@ output "linux_public_ip" {
 output "windows_public_ip" {
   value = azurerm_public_ip.pip_windows.ip_address
 }
+//terraform output
 
 //IaC = traiter ton infrastructure comme du code. On écrit “la recette” et le cloud exécute cette recette pour créer les ressources exactement comme tu l’as défini.//
 //Avec IaC : tu écris un fichier Terraform avec tout ça, tu l’exécutes, et Azure crée toutes les ressources automatiquement.
