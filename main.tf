@@ -32,6 +32,7 @@ resource "azurerm_network_security_group" "nsg" {
   name                = "nsg-demo"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+  
 // pour linux  regle ssh
   security_rule { //Définit une règle de sécurité réseau à appliquer au NSG.
     name                       = "AllowSSH"
@@ -61,17 +62,33 @@ resource "azurerm_network_security_group" "nsg" {
 
 # 5 Network Interface pour VM --Chaque VM a besoin d’une interface réseau pour communiquer dans le VNet.Network Interface Card).
 # -----------------------------
+resource "azurerm_public_ip" "pip_linux" {
+  name                = "pip-linux"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard" 
+  allocation_method   = "Static"   # ou "Static" si tu veux une IP fixe
+}
+
+
 //nic linux 
 resource "azurerm_network_interface" "nic_linux" { //On crée une interface réseau (NIC) pour une VM.
   name                = "nic-linux"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   
+
   ip_configuration {
     name                          = "ipconfig1"  //nom de la configuration IP (obligatoire).
     subnet_id                     = azurerm_subnet.subnet.id //on rattache la NIC au sous-réseau qu’on a créé avant (subnet-demo).
     private_ip_address_allocation = "Dynamic" //l’adresse IP privée sera attribuée automatiquement par Azure (DHCP).
+    public_ip_address_id          = azurerm_public_ip.pip_linux.id  
   }
+}
+// Associer NSG à la NIC Linux
+resource "azurerm_network_interface_security_group_association" "linux_nic_nsg" {
+  network_interface_id          = azurerm_network_interface.nic_linux.id
+  network_security_group_id     = azurerm_network_security_group.nsg.id
 }
 
 
@@ -105,19 +122,34 @@ resource "azurerm_linux_virtual_machine" "vm_linux" {
 //RG + VNet/Subnet + NIC + VM.
 //Ces 4 ressources sont indispensables (plus la clé SSH ou mot de passe pour l’accès).
 # 7 VM Windows
+#ip public 
+resource "azurerm_public_ip" "pip_windows" {
+  name                = "pip-windows"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard" 
+  allocation_method   = "Static"   # ou "Static" si tu veux une IP fixe
+}
+
 # -----------------------------
 resource "azurerm_network_interface" "nic_windows" {
   name                = "nic-windows"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+   
 
   ip_configuration {
     name                          = "ipconfig1"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.pip_windows.id 
   }
 }
-
+// Associer NSG à la NIC Windows
+resource "azurerm_network_interface_security_group_association" "windows_nic_nsg" {
+  network_interface_id          = azurerm_network_interface.nic_windows.id
+  network_security_group_id     = azurerm_network_security_group.nsg.id
+}
 resource "azurerm_windows_virtual_machine" "vm_windows" {
   name                = "vm-windows-demo"
   resource_group_name = azurerm_resource_group.rg.name
