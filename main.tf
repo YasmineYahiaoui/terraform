@@ -6,7 +6,7 @@ provider "azurerm" {
   // create a ressource group   une boîte d’organisation.
 resource "azurerm_resource_group" "rg" { //Crée un groupe de ressources dans Azure. nom local RG
   name = "rg1" //  NOM DU GROUP 
-  location ="westeurope" // region ou seront cree les resources 
+  location ="canadacentral" // region ou seront cree les resources 
 }
 # -----------------------------
 # 2 Virtual Network (VNet) Réseau virtuel privé dans Azure
@@ -58,6 +58,19 @@ resource "azurerm_network_security_group" "nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+  #regle winRM pour gérer Windows avec Ansible depuis Internet
+  security_rule {
+  name                       = "AllowWinRM"
+  priority                   = 1003
+  direction                  = "Inbound"
+  access                     = "Allow"
+  protocol                   = "Tcp"
+  source_port_range          = "*"
+  destination_port_range     = "5985" # ou 5986 pour HTTPS dans un vrai projet on préfère 5986 (HTTPS) avec un certificat, mais pour un labo 5985 est correct.
+  source_address_prefix      = "*"    # en pro: remplacer par ton IP publique
+  destination_address_prefix = "*"
+}
+
 }
 
 # 5 Network Interface pour VM --Chaque VM a besoin d’une interface réseau pour communiquer dans le VNet.Network Interface Card).
@@ -174,7 +187,7 @@ resource "azurerm_windows_virtual_machine" "vm_windows" {
 # 8 Storage Account sert a stocker des blobs(image video fichier ) des tables des queues message entre application 
 # -----------------------------
 resource "azurerm_storage_account" "storage_demo" {
-  name                     = "storagedemo12345yasmine" # Doit être unique
+  name                     = "sstoragedemo1999yasmine" # Doit être unique
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
@@ -202,4 +215,10 @@ output "windows_public_ip" {
 
 //Azure suit la recette et crée tout pour toi dans le cloud.
 
+
 //Tu n’as jamais besoin d’installer Ubuntu/Windows sur ton PC pour faire ces VM.
+
+//Les règles NSG changent selon le projet :
+//par exemple ouvrir le port 80 (HTTP) si tu héberges un site web, ou 443 (HTTPS).
+//linux_public_ip = "4.206.43.7"
+//windows_public_ip = "4.206.161.16"
