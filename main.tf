@@ -181,6 +181,18 @@ resource "azurerm_storage_account" "storage_demo" {
   account_replication_type = "LRS"
 }
 
+# -----------------------------
+# Outputs : adresses IP publiques
+# -----------------------------
+output "linux_public_ip" {
+  value = azurerm_public_ip.pip_linux.ip_address
+}
+
+output "windows_public_ip" {
+  value = azurerm_public_ip.pip_windows.ip_address
+}
+//terraform output
+
 //IaC = traiter ton infrastructure comme du code. On écrit “la recette” et le cloud exécute cette recette pour créer les ressources exactement comme tu l’as défini.//
 //Avec IaC : tu écris un fichier Terraform avec tout ça, tu l’exécutes, et Azure crée toutes les ressources automatiquement.
 //IaC = écrire la définition de ton infrastructure dans un fichier (code), au lieu de créer les ressources manuellement dans le portail Azure.
