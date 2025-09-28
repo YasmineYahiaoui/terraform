@@ -1,0 +1,43 @@
+# ansible/playbooks/windows_init.yml
+---
+- name: Windows - Préparer la VM (AD DS, utilisateur, fichier)
+  hosts: windows
+  gather_facts: no
+ # accélère et évite des soucis au premier run
+  vars:
+    local_admin_user: "opsadmin"
+    local_admin_password: "P@ssw0rd!123"    # pour labo uniquement
+    note_content: |
+      Bonjour !
+      Cette machine a été configurée via Ansible.
+      - Feature AD DS installée
+      - Utilisateur local 'opsadmin' créé
+      - Ce fichier a été copié automatiquement :)
+
+  tasks:
+    - name: Installer la feature AD-Domain-Services (prépare AD)
+      ansible.windows.win_feature:
+        name: AD-Domain-Services
+        state: present
+        include_management_tools: yes
+      register: addss
+      # Certaines features demandent un reboot → on gère plus bas
+
+    - name: Créer un utilisateur local administrateur
+      ansible.windows.win_user:
+        name: "{{ local_admin_user }}"
+        password: "{{ local_admin_password }}"
+        state: present
+        groups:
+          - Administrators
+        password_never_expires: yes
+
+    - name: Copier un fichier de note
+      ansible.windows.win_copy:
+        content: "{{ note_content }}"
+        dest: "C:\\Users\\Public\\README-ansible.txt"
+
+    - name: Redémarrer si nécessaire (après ajout de features)
+      ansible.windows.win_reboot:
+      when: addss.reboot_required | default(false)
+

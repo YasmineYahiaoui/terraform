@@ -1,0 +1,61 @@
+# ansible/playbooks/linux_web.yml
+---
+- name: Linux - Préparer Nginx et publier un site HTML
+  hosts: linux
+  become: true
+#sudo uniquement pour liux 
+  vars:
+    site_title: "Mon site Ansible sur Azure"
+    # plus portable que lookup(pipe,'date ...') et indépendant du shell distant
+    deploy_date: "{{ ansible_date_time.date }} {{ ansible_date_time.time }}"
+    web_root: "/var/www/html"
+
+  pre_tasks:
+    - name: (Sécurité) S'assurer que Python est présent (rarement nécessaire sur Ubuntu Azure, mais safe)
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt update && apt install -y python3)
+      changed_when: false
+
+  tasks:
+    - name: Mettre à jour l'index APT
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Mettre à niveau les paquets installés (sécurité/patchs)
+      ansible.builtin.apt:
+        upgrade: safe
+
+    - name: Installer Nginx (serveur web)
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: S'assurer que le répertoire web existe
+      ansible.builtin.file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+
+    - name: Déployer la page HTML depuis un template
+      ansible.builtin.template:
+        src: "../templates/index.html.j2"
+        dest: "{{ web_root }}/index.html"
+        owner: www-data
+        group: www-data
+        mode: "0644"
+      notify: Restart nginx
+
+    - name: Activer et démarrer Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
