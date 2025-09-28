@@ -70,6 +70,18 @@ resource "azurerm_network_security_group" "nsg" {
   source_address_prefix      = "*"    # en pro: remplacer par ton IP publique
   destination_address_prefix = "*"
 }
+# Règle HTTP pour autoriser l'accès web
+security_rule {
+  name                       = "AllowHTTP"
+  priority                   = 1004
+  direction                  = "Inbound"
+  access                     = "Allow"
+  protocol                   = "Tcp"
+  source_port_range          = "*"
+  destination_port_range     = "80"    # Port HTTP
+  source_address_prefix      = "*"     # ou ton IP publique en prod
+  destination_address_prefix = "*"
+}
 
 }
 
