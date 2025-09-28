@@ -146,7 +146,7 @@ resource "azurerm_linux_virtual_machine" "vm_linux" {
 
 //RG + VNet/Subnet + NIC + VM.
 //Ces 4 ressources sont indispensables (plus la clé SSH ou mot de passe pour l’accès).
-# 7 VM Windows
+
 #ip public 
 resource "azurerm_public_ip" "pip_windows" {
   name                = "pip-windows"
@@ -156,7 +156,8 @@ resource "azurerm_public_ip" "pip_windows" {
   allocation_method   = "Static"   # ou "Static" si tu veux une IP fixe
 }
 
-# -----------------------------
+# -----NIC WINDOWS------------------------
+
 resource "azurerm_network_interface" "nic_windows" {
   name                = "nic-windows"
   location            = azurerm_resource_group.rg.location
@@ -175,11 +176,12 @@ resource "azurerm_network_interface_security_group_association" "windows_nic_nsg
   network_interface_id          = azurerm_network_interface.nic_windows.id
   network_security_group_id     = azurerm_network_security_group.nsg.id
 }
+# 7 VM Windows
 resource "azurerm_windows_virtual_machine" "vm_windows" {
   name                = "vm-windows-demo"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  size                = "Standard_B1s"
+  size                = "Standard_B2ms"  #changer standrd-b1s ver b2ms pour AD DS car il abesoin plus de memoir et avant 1 go ram c tres peu 
   admin_username      = "azureuser"
   admin_password      = "Password1234!"
   network_interface_ids = [azurerm_network_interface.nic_windows.id]
